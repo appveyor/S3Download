@@ -62,7 +62,7 @@ namespace S3Download
                     var target = Path.Combine(folder, file);
                     if (File.Exists(target))
                     {
-                        Console.WriteLine(target + "already exists, skipping...");
+                        Console.WriteLine(target + " already exists, skipping...");
                         _cursorTop = Console.CursorTop;
                     }
                     else

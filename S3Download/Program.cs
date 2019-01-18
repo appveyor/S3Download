@@ -46,7 +46,7 @@ namespace S3Download
             {
                 ServiceURL = serviceURL,
                 UseHttp = true,
-                MaxErrorRetry = 5
+                MaxErrorRetry = 20
             };
 
             s3Client = new AmazonS3Client(сredentials, config);

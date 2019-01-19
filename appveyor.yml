@@ -8,7 +8,7 @@ before_build:
 build:
   verbosity: minimal
 artifacts:
-- path: S3Download\bin\$(platform)\$(configuration)
+- path: S3Download\bin\$(configuration)
   name: S3Download
 deploy:
 - provider: GitHub

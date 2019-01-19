@@ -14,12 +14,12 @@ using System.Threading.Tasks;
 
 namespace S3Download
 {
-    class TrackMPUUsingHighLevelAPITest
+    class S3Download
     {
-        private static IAmazonS3 s3Client;
-
-        private static ConcurrentDictionary<string, string> progressList = new ConcurrentDictionary<string, string>();
+        private static IAmazonS3 _s3Client;
+        private static ConcurrentDictionary<string, string> _progressList;
         private static int _cursorTop = 0;
+        private static int _filesCount = 0;
 
         public static void Main(string[] args)
         {
@@ -29,9 +29,7 @@ namespace S3Download
                     "<comma-separated-target-folders-list-or-single-folder>" +
                     " <accessKeyId> <secretAccessKey> <serviceURL>");
                 return;
-            }
-
-            _cursorTop = Console.CursorTop;
+            }            
 
             string bucketName = args[0];
             var files = args[1].Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()).ToArray();
@@ -41,7 +39,6 @@ namespace S3Download
             string serviceURL = args[5];
 
             AWSCredentials сredentials = new BasicAWSCredentials(accessKeyId, secretAccessKey);
-
             AmazonS3Config config = new AmazonS3Config()
             {
                 ServiceURL = serviceURL,
@@ -49,7 +46,10 @@ namespace S3Download
                 MaxErrorRetry = 20
             };
 
-            s3Client = new AmazonS3Client(сredentials, config);
+            _s3Client = new AmazonS3Client(сredentials, config);
+            _filesCount = files.Length;
+            _cursorTop = Console.CursorTop;
+            _progressList = new ConcurrentDictionary<string, string>();
 
             var watch = new Stopwatch();
             watch.Start();
@@ -74,7 +74,7 @@ namespace S3Download
 
             Task.WaitAll(TaskList.ToArray());
             watch.Stop();
-            Console.CursorTop = _cursorTop + TaskList.Count() + 1;
+            Console.CursorTop = _cursorTop + _filesCount + 1;
             Console.WriteLine($"Completed in {watch.Elapsed.Hours:D2}:{watch.Elapsed.Minutes:D2}:{watch.Elapsed.Seconds:D2}");
         }
 
@@ -82,7 +82,7 @@ namespace S3Download
         {
             try
             {
-                var fileTransferUtility = new TransferUtility(s3Client);
+                var fileTransferUtility = new TransferUtility(_s3Client);
 
                 var downloadRequest =
                     new TransferUtilityDownloadRequest
@@ -98,10 +98,12 @@ namespace S3Download
             }
             catch (AmazonS3Exception e)
             {
+                Console.CursorTop = _cursorTop + _filesCount + 1;
                 Console.WriteLine("Error encountered on server. Message:'{0}' when writing an object", e.Message);
             }
             catch (Exception e)
             {
+                Console.CursorTop = _cursorTop + _filesCount + 1;
                 Console.WriteLine("Unknown encountered on server. Message:'{0}' when writing an object", e.Message);
             }
         }
@@ -109,12 +111,12 @@ namespace S3Download
         static void DownloadPartProgressEvent(object sender, WriteObjectProgressArgs e)
         {
             int cursorTop = _cursorTop;
-            progressList[e.FilePath] = e.IsCompleted ? "Completed".PadRight(60) : $"{e.TransferredBytes:N}/{e.TotalBytes:N} bytes ({e.PercentDone.ToString()}% done)";
-            foreach (var key in progressList.Keys)
+            _progressList[e.FilePath] = e.IsCompleted ? "Completed".PadRight(60) : $"{e.TransferredBytes:N}/{e.TotalBytes:N} bytes ({e.PercentDone.ToString()}% done)";
+            foreach (var key in _progressList.Keys)
             {
                 Console.CursorTop = cursorTop;
                 Console.CursorVisible = false;
-                Console.WriteLine($"{key}: {progressList[key]}");
+                Console.WriteLine($"{key}: {_progressList[key]}");
                 cursorTop++;
             }
         }

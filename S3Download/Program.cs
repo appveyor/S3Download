@@ -18,8 +18,10 @@ namespace S3Download
     {
         private static IAmazonS3 _s3Client;
         private static ConcurrentDictionary<string, string> _progressList;
-        private static int _cursorTop = 0;
+        //private static int _cursorTop = 0;
         private static int _filesCount = 0;
+        private static int _displayCount = 0;
+
 
         public static void Main(string[] args)
         {
@@ -48,7 +50,6 @@ namespace S3Download
 
             _s3Client = new AmazonS3Client(сredentials, config);
             _filesCount = files.Length;
-            _cursorTop = Console.CursorTop;
             _progressList = new ConcurrentDictionary<string, string>();
 
             var watch = new Stopwatch();
@@ -63,7 +64,6 @@ namespace S3Download
                     if (File.Exists(target))
                     {
                         Console.WriteLine(target + " already exists, skipping...");
-                        _cursorTop = Console.CursorTop;
                     }
                     else
                     {
@@ -74,7 +74,6 @@ namespace S3Download
 
             Task.WaitAll(TaskList.ToArray());
             watch.Stop();
-            Console.CursorTop = _cursorTop + _filesCount + 1;
             Console.WriteLine($"Completed in {watch.Elapsed.Hours:D2}:{watch.Elapsed.Minutes:D2}:{watch.Elapsed.Seconds:D2}");
         }
 
@@ -94,30 +93,28 @@ namespace S3Download
 
                 downloadRequest.WriteObjectProgressEvent += new EventHandler<WriteObjectProgressArgs>(DownloadPartProgressEvent);
                 await fileTransferUtility.DownloadAsync(downloadRequest);
-                Console.WriteLine("Upload completed");
             }
             catch (AmazonS3Exception e)
             {
-                Console.CursorTop = _cursorTop + _filesCount + 1;
                 Console.WriteLine("Error encountered on server. Message:'{0}' when writing an object", e.Message);
             }
             catch (Exception e)
             {
-                Console.CursorTop = _cursorTop + _filesCount + 1;
                 Console.WriteLine("Unknown encountered on server. Message:'{0}' when writing an object", e.Message);
             }
         }
 
         static void DownloadPartProgressEvent(object sender, WriteObjectProgressArgs e)
         {
-            int cursorTop = _cursorTop;
             _progressList[e.FilePath] = e.IsCompleted ? "Completed".PadRight(60) : $"{e.TransferredBytes:N}/{e.TotalBytes:N} bytes ({e.PercentDone.ToString()}% done)";
-            foreach (var key in _progressList.Keys)
+            if (Interlocked.Increment(ref _displayCount) % 200 == 0 || e.IsCompleted)
             {
-                Console.CursorTop = cursorTop;
-                Console.CursorVisible = false;
-                Console.WriteLine($"{key}: {_progressList[key]}");
-                cursorTop++;
+                foreach (var key in _progressList.Keys)
+                {
+                    Console.WriteLine($"{key}: {_progressList[key]}");
+                    Thread.Sleep(TimeSpan.FromMilliseconds(200));
+                }
+                Console.WriteLine("");
             }
         }
     }

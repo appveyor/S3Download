@@ -107,7 +107,7 @@ namespace S3Download
         static void DownloadPartProgressEvent(object sender, WriteObjectProgressArgs e)
         {
             _progressList[e.FilePath] = e.IsCompleted ? "Completed".PadRight(60) : $"{e.TransferredBytes:N}/{e.TotalBytes:N} bytes ({e.PercentDone.ToString()}% done)";
-            if (Interlocked.Increment(ref _displayCount) % 200 == 0 || e.IsCompleted)
+            if (Interlocked.Increment(ref _displayCount) % 2000 == 0 || e.IsCompleted)
             {
                 foreach (var key in _progressList.Keys)
                 {
